@@ -1,0 +1,94 @@
+module fpu_div (
+    input  wire        clock,
+    input  wire        reset,
+    input  wire        start,
+    input  wire        sign_a,  // A = dividendo
+    input  wire [7:0]  exp_a,
+    input  wire [23:0] mant_a,
+    input  wire        sign_b,  // B = divisor
+    input  wire [7:0]  exp_b,
+    input  wire [23:0] mant_b,
+    output reg         busy,
+    output reg         done,
+    output wire        f_div_zero,
+    output wire        res_sign,
+    output wire [9:0]  res_exp,
+    output wire [27:0] res_mant 
+);
+
+    assign res_sign   = sign_a ^ sign_b;
+    assign f_div_zero = (mant_b == 24'd0);
+
+    wire [9:0] exp_a_ext = {2'b00, exp_a};
+    wire [9:0] exp_b_ext = {2'b00, exp_b};
+    assign res_exp = exp_a_ext - exp_b_ext + 10'd127;
+
+    reg [49:0] dividendo_reg; // [49:25] eh o acumulador (resto parcial), [24:0] eh o quociente parcial
+    reg [24:0] divisor_reg;
+    reg [4:0]  count;
+    reg [1:0]  state;
+
+    localparam IDLE  = 2'd0;
+    localparam SHIFT = 2'd1;
+    localparam FIM   = 2'd2;
+
+    wire [24:0] sub_resultado = dividendo_reg[49:25] - divisor_reg;
+
+    always @(posedge clock or posedge reset) begin
+        if (reset) begin
+            state         <= IDLE;
+            busy          <= 1'b0;
+            done          <= 1'b0;
+            count         <= 5'd0;
+            dividendo_reg <= 50'd0;
+            divisor_reg   <= 25'd0;
+        end else begin
+            case (state)
+                IDLE: begin
+                    done <= 1'b0;
+                    if (start && !f_div_zero) begin
+                        busy <= 1'b1;
+                        dividendo_reg <= {1'b0, mant_a, 25'd0}; 
+                        divisor_reg   <= {1'b0, mant_b};
+                        count         <= 5'd26; // 26 bits (24 fração + Guard + Round)
+                        state         <= SHIFT;
+                    end else if (start && f_div_zero) begin
+                        done <= 1'b1;
+                    end
+                end
+
+                SHIFT: begin
+                    if (count > 0) begin
+                        if (sub_resultado[24] == 1'b1) begin
+                            dividendo_reg <= {dividendo_reg[48:0], 1'b0};
+                        end else begin
+                            dividendo_reg <= {sub_resultado[23:0], dividendo_reg[24:0], 1'b1};
+                        end
+                        count <= count - 1;
+                    end else begin
+                        state <= FIM;
+                    end
+                end
+
+                FIM: begin
+                    busy  <= 1'b0;
+                    done  <= 1'b1;
+                    state <= IDLE;
+                end
+                
+                default: state <= IDLE;
+            endcase
+        end
+    end
+
+    // 3. Fechamento da Mantissa
+    // [25:2] são os 24 bits da mantissa, [1] é o Guard, [0] é o Round.
+    // O resto da divisao determina o bit Sticky.
+    wire        sticky_bit = (dividendo_reg[49:26] != 24'd0);
+    wire [25:0] quociente  = dividendo_reg[25:0];
+
+    // Formato padrao de 28 bits para o normalizador: [27:26] Int, [25:3] Frac, [2] G, [1] R, [0] S
+    // A divisao de 1.x / 1.x nunca passa de 1.x, entao os bits Int serao sempre 01 ou 00.
+    assign res_mant = {2'b00, quociente[25:2], quociente[1], quociente[0], sticky_bit};
+
+endmodule
