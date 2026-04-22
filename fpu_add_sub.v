@@ -29,9 +29,17 @@ module fpu_add_sub (
     // Se a diferença for maior que 26, todos os bits do menor número caem no bit Sticky.
     wire [7:0] shift_amt = (exp_diff > 8'd26) ? 8'd27 : exp_diff;
 
-    // Alinhamento com preservacao dos bits Guard, Round e Sticky (GRS)
-    wire [50:0] shifted_smaller = {1'b0, smaller_mant, 26'b0} >> shift_amt;
+    wire [50:0] mant_to_shift = {1'b0, smaller_mant, 26'b0};
+    wire [50:0] shifted_smaller;
+
+    barrel_shifter_right_51 shifter_inst (
+        .data_in(mant_to_shift),
+        .shamt(shift_amt[4:0]),  // Pegamos apenas os 5 bits necessários (máx 31)
+        .data_out(shifted_smaller)
+    );
+    // ----------------------------------------------------
     
+    // Alinhamento com preservacao dos bits Guard, Round e Sticky (GRS)
     wire [23:0] aligned_smaller_mant = shifted_smaller[49:26];
     wire        guard_bit            = shifted_smaller[25];
     wire        round_bit            = shifted_smaller[24];

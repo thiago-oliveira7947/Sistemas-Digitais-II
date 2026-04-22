@@ -13,16 +13,12 @@ module fpu_cmp (
     output wire [31:0] res_cmp
 );
 
-    // =========================
-    // DETECÇÃO DE NaN
-    // =========================
+    // deteccao DE NaN
     wire a_is_nan = (exp_a == 8'hFF) && (mant_a[22:0] != 0);
     wire b_is_nan = (exp_b == 8'hFF) && (mant_b[22:0] != 0);
     wire any_nan  = a_is_nan | b_is_nan;
 
-    // =========================
-    // IGUALDADE
-    // =========================
+    // igualdade
     wire both_zero = is_zero_a & is_zero_b;
 
     wire raw_equal = both_zero | 
@@ -32,9 +28,7 @@ module fpu_cmp (
 
     wire is_equal = any_nan ? 1'b0 : raw_equal;
 
-    // =========================
-    // MENOR QUE
-    // =========================
+    // menor que
     wire diff_signs_lt = (sign_a & ~sign_b) & ~both_zero;
 
     wire mag_a_lt_mag_b = (exp_a < exp_b) | ((exp_a == exp_b) & (mant_a < mant_b));
@@ -47,14 +41,10 @@ module fpu_cmp (
 
     wire a_lt_b = any_nan ? 1'b0 : raw_lt;
 
-    // =========================
-    // RESULTADO FINAL
-    // =========================
+    // resultado
     wire condition_met = is_slt ? a_lt_b : is_equal;
 
-    // =========================
-    // SAÍDA IEEE
-    // =========================
+    // saida
     assign res_cmp = condition_met ? 32'h3F800000 : 32'h00000000;
 
 endmodule
