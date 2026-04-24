@@ -1,19 +1,10 @@
 module fpu (
-    input  wire        clock,
-    input  wire        reset,
-    input  wire        start,
-    input  wire [31:0] a,
-    input  wire [31:0] b,
-    input  wire [2:0]  op, // 000:ADD, 001:SUB, 010:MUL, 011:DIV, 100:EQ, 101:SLT
-    
-    output wire [31:0] c,
-    output wire        busy,
-    output wire        done,
-    output wire        f_inv_op,
-    output wire        f_div_zero,
-    output wire        f_overflow,
-    output wire        f_underflow,
-    output wire        f_inexact
+    input clock, reset, start,
+    input [31:0] a, b,
+    input [2:0] op, // ADD, SUB, MUL, DIV, EQ, SLT
+    output [31:0] c,
+    output busy, done,
+    output f_inv_op, f_div_zero, f_overflow, f_underflow, f_inexact
 );
 
     // unpacking dos operandos

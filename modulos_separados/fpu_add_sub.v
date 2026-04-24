@@ -44,7 +44,7 @@ module fpu_add_sub (
     wire        guard_bit            = shifted_smaller[25];
     wire        round_bit            = shifted_smaller[24];
     
-    // CORREÇÃO: Garante que o sticky capture bits mesmo se o exp_diff for maior que o shifter suporta
+    //Garante que o sticky capture bits mesmo se o exp_diff for maior que o shifter suporta
     wire        force_sticky         = (exp_diff > 8'd26) & (|smaller_mant);
     wire        sticky_bit           = (|shifted_smaller[23:0]) | force_sticky;
 
