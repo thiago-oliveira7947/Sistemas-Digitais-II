@@ -38,17 +38,19 @@ module fpu_add_sub (
         .data_out(shifted_smaller)
     );
     // ----------------------------------------------------
-    
+        
     // Alinhamento com preservacao dos bits Guard, Round e Sticky (GRS)
     wire [23:0] aligned_smaller_mant = shifted_smaller[49:26];
     wire        guard_bit            = shifted_smaller[25];
     wire        round_bit            = shifted_smaller[24];
-    wire        sticky_bit           = |shifted_smaller[23:0]; // OR de todos os bits descartados
+    
+    // CORREÇÃO: Garante que o sticky capture bits mesmo se o exp_diff for maior que o shifter suporta
+    wire        force_sticky         = (exp_diff > 8'd26) & (|smaller_mant);
+    wire        sticky_bit           = (|shifted_smaller[23:0]) | force_sticky;
 
     // Concatenando
     wire [27:0] larger_mant_ext  = {2'b00, larger_mant, 3'b000};
     wire [27:0] smaller_mant_ext = {2'b00, aligned_smaller_mant, guard_bit, round_bit, sticky_bit};
-
     // Executar a adicao ou subtracao
     wire [27:0] calc_mant = eff_sub ? (larger_mant_ext - smaller_mant_ext) 
                                     : (larger_mant_ext + smaller_mant_ext);
